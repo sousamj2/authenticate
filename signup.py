@@ -9,7 +9,7 @@ from flask import (
 )
 from markupsafe import Markup
 from pprint import pprint
-from mailinteraction import get_lisbon_greeting, render_profile_template
+from simplewebapp.Funhelpers import get_lisbon_greeting
 
 
 # bp_signup314 = Blueprint("signup314", __name__)
