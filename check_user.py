@@ -76,7 +76,7 @@ def check_user():
         password = request.form.get("password", "")
 
         if not email or not password:
-            flash("Falta o username/email ou a palavra-passe.")
+            flash("Missing username/email or password.")
             return redirect(url_for("signin.signin"))
 
         if "@" not in email:  # case for user name
@@ -85,7 +85,7 @@ def check_user():
         # Fetch the stored hash for this email
         hashval = getHashFromEmail(email)
         if hashval is None:
-            flash("O username/email não existe ou a palavra-passe está incorreta.")
+            flash("Username/email does not exist or password is incorrect.")
             return redirect(url_for("signin.signin"))
 
         # Verify password against hash
@@ -97,10 +97,10 @@ def check_user():
                 # return redirect(url_for('profile.profile', source_method ='POST'))
                 return redirect(url_for('profile.profile'))
             else:
-                flash("O username/email não existe ou a palavra-passe está incorreta.")
+                flash("Username/email does not exist or password is incorrect.")
                 return redirect(url_for("signup.signup"))
         else:
-            flash("O username/email não existe ou a palavra-passe está incorreta.")
+            flash("Username/email does not exist or password is incorrect.")
             return redirect(url_for("signin.signin"))
 
     else:
@@ -122,6 +122,6 @@ def check_user():
             # return redirect(url_for('profile.profile', source_method ='GET'))
             return redirect(url_for("profile.profile"))
         else:
-            flash("O username/email não existe ou a palavra-passe está incorreta.")
+            flash("User not found, please sign up.")
             # pprint('User not found, redirecting to signup.')
             return redirect(url_for("signup.signup"))
