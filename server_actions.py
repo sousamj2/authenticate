@@ -48,7 +48,7 @@ def request_resume():
     session["resume_email"] = user_email
     
     flash("A confirmation code has been sent to your email.")
-    return redirect(url_for("home.view_func_home"))
+    return redirect(url_for("profile.profile"))
 
 @bp_server_actions.route("/verify_code", methods=["POST"])
 def verify_code():
@@ -56,20 +56,27 @@ def verify_code():
     Verifies the 10-char code and triggers the background resume process.
     """
     code = request.form.get("code", "").strip()
+    print(f"DEBUG RESUME: Verifying code: {code}", flush=True)
     email = confirm_short_token(code)
     
     if not email:
+        print(f"DEBUG RESUME: Code verification FAILED for code: {code}", flush=True)
         flash("Invalid or expired confirmation code.")
-        return redirect(url_for("home.view_func_home"))
+        return redirect(url_for("profile.profile"))
+    
+    print(f"DEBUG RESUME: Code verification SUCCESSFUL for email: {email}", flush=True)
 
     # Check for daily restart time (3:00 - 3:05 AM GMT)
     now_gmt = datetime.now(pytz.timezone('GMT'))
     if now_gmt.hour == 3 and 0 <= now_gmt.minute <= 5:
         flash("Daily server restart ongoing. Please wait.")
-        return redirect(url_for("home.view_func_home"))
+        return redirect(url_for("profile.profile"))
 
     # Start the resume process in a background thread
-    session_id = session.get("session_id") or email # Use email as fallback
+    session_id = session.get("session_id") or email
+    session["session_id"] = session_id # Ensure it's persisted in session
+    print(f"DEBUG RESUME: Using session_id: {session_id} for progress tracking", flush=True)
+    
     server_progress[session_id] = {"step": "starting_machine", "progress": 10, "message": "Starting machine..."}
     
     # We need app context for the thread
@@ -80,7 +87,7 @@ def verify_code():
     session["resume_in_progress"] = True
     session.pop("waiting_for_resume_code", None)
     
-    return redirect(url_for("home.view_func_home"))
+    return redirect(url_for("profile.profile"))
 
 @bp_server_actions.route("/status")
 def get_status():
@@ -88,6 +95,7 @@ def get_status():
     Returns the current progress of the server resume sequence.
     """
     session_id = session.get("session_id") or session.get("resume_email")
+    # print(f"DEBUG RESUME: Polling status for session_id: {session_id}", flush=True)
     if not session_id or session_id not in server_progress:
         return {"status": "none"}
     
@@ -99,73 +107,87 @@ def async_resume_sequence(app, session_id):
     """
     import time
     with app.app_context():
+        print(f"DEBUG RESUME: Starting sequence for session {session_id}", flush=True)
         try:
             instance_name = app.config.get("GCP_INSTANCE_NAME", "mcserver-mem8")
             zone = app.config.get("GCP_ZONE", "europe-west1-b")
-            remote_host = "sargedas@mc.mjcrafts.pt" # Using sargedas as verified by agent
+            project_id = app.config.get("GCP_PROJECT_ID", "minecraft-server-july-12")
             
             def update_progress(step, progress, message):
                 server_progress[session_id] = {"step": step, "progress": progress, "message": message}
-                print(f"PROGRESS [{session_id}]: {message}")
+                print(f"DEBUG RESUME [{session_id}]: {message}", flush=True)
 
             def run_cmd(cmd, shell=False):
+                cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
+                print(f"DEBUG RESUME: Running command: {cmd_str}", flush=True)
                 try:
-                    result = subprocess.run(cmd, shell=shell, capture_output=True, text=True, timeout=30)
+                    result = subprocess.run(cmd, shell=shell, capture_output=True, text=True, timeout=60)
+                    if result.stdout:
+                        print(f"DEBUG RESUME: STDOUT: {result.stdout.strip()}", flush=True)
+                    if result.stderr:
+                        print(f"DEBUG RESUME: STDERR: {result.stderr.strip()}", flush=True)
                     return result
-                except Exception:
+                except Exception as e:
+                    print(f"DEBUG RESUME: Exception: {str(e)}", flush=True)
                     return None
 
             # Step 1: Check and Resume VM
             update_progress("starting_machine", 20, "Checking VM status...")
-            status_cmd = ["gcloud", "compute", "instances", "describe", instance_name, "--zone", zone, "--format=value(status)"]
+            status_cmd = ["gcloud", "compute", "instances", "describe", instance_name, "--zone", zone, "--project", project_id, "--format=value(status)"]
             res = run_cmd(status_cmd)
             status = res.stdout.strip() if res else "UNKNOWN"
+            print(f"DEBUG RESUME: Current VM Status: {status}", flush=True)
 
             if status == "SUSPENDED":
                 update_progress("starting_machine", 30, "Resuming VM instance...")
-                resume_cmd = ["gcloud", "compute", "instances", "resume", instance_name, "--zone", zone]
+                resume_cmd = ["gcloud", "compute", "instances", "resume", instance_name, "--zone", zone, "--project", project_id]
                 run_cmd(resume_cmd)
+            elif status == "TERMINATED":
+                update_progress("starting_machine", 30, "Starting VM instance...")
+                start_cmd = ["gcloud", "compute", "instances", "start", instance_name, "--zone", zone, "--project", project_id]
+                run_cmd(start_cmd)
             
             # Polling for RUNNING
+            update_progress("starting_machine", 40, "Waiting for VM to be RUNNING...")
             start_time = time.time()
-            while time.time() - start_time < 60:
+            vm_ready = False
+            while time.time() - start_time < 120:
                 res = run_cmd(status_cmd)
                 if res and res.stdout.strip() == "RUNNING":
+                    vm_ready = True
                     break
                 time.sleep(5)
             
+            if not vm_ready:
+                raise Exception("VM failed to reach RUNNING state in time.")
+
             # Step 2: Start Minecraft
-            update_progress("starting_minecraft", 50, "Waiting for Minecraft service...")
-            ssh_base = f"gcloud compute ssh {instance_name} --zone {zone} --quiet --"
-            ssh_check_cmd = f"{ssh_base} sudo systemctl is-active mcpserver.service"
+            update_progress("starting_minecraft", 60, "Waiting for SSH and Minecraft service...")
+            # We'll try to start the service via SSH
+            ssh_base = f"gcloud compute ssh {instance_name} --zone {zone} --project {project_id} --quiet --"
             
-            start_time = time.time()
-            while time.time() - start_time < 90:
-                res = run_cmd(ssh_check_cmd, shell=True)
-                if res and res.returncode in [0, 3]:
-                    if res.stdout.strip() != "active":
-                        update_progress("starting_minecraft", 70, "Starting Minecraft service...")
-                        run_cmd(f"{ssh_base} sudo systemctl start mcpserver.service", shell=True)
-                    break
-                time.sleep(5)
+            # Try to start the service
+            update_progress("starting_minecraft", 75, "Starting Minecraft service...")
+            run_cmd(f"{ssh_base} sudo systemctl start mcpserver.service", shell=True)
             
             # Step 3: Server is ready
-            update_progress("ready", 90, "Server is ready! Loading plugins (60s wait)...")
+            update_progress("ready", 90, "Server started! Waiting for plugins to load (60s)...")
             time.sleep(60)
             update_progress("completed", 100, "Done!")
             
             # Cleanup after some time
-            time.sleep(20)
+            time.sleep(30)
             if session_id in server_progress:
                 del server_progress[session_id]
 
         except Exception as e:
+            print(f"DEBUG RESUME: ERROR in sequence: {str(e)}", flush=True)
             update_progress("failed", 0, f"Error: {str(e)}")
-            time.sleep(30)
+            time.sleep(60)
             if session_id in server_progress:
                 del server_progress[session_id]
 
 @bp_server_actions.route("/confirm/<token>")
 def confirm_resume(token):
     # This route is now deprecated in favor of verify_code but kept for compatibility if needed
-    return redirect(url_for("home.view_func_home"))
+    return redirect(url_for("profile.profile"))
