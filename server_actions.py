@@ -184,6 +184,21 @@ def async_resume_sequence(app, session_id):
             time.sleep(60)
             update_progress("completed", 100, "Done!")
             
+            # Step 4: Reactivate auto-suspend monitor after 10 minutes
+            # We start a separate thread for the 10-minute wait so this one can finish
+            def wait_and_start_timer():
+                print(f"DEBUG RESUME: Waiting 10 minutes to reactivate auto-suspend timer...", flush=True)
+                time.sleep(600)
+                try:
+                    subprocess.run(["sudo", "systemctl", "start", "mc_auto_suspend.timer"], check=True)
+                    print(f"DEBUG RESUME: Auto-suspend timer reactivated successfully.", flush=True)
+                except Exception as e:
+                    print(f"DEBUG RESUME: Failed to reactivate timer: {e}", flush=True)
+
+            timer_thread = threading.Thread(target=wait_and_start_timer)
+            timer_thread.daemon = True # Don't block app shutdown
+            timer_thread.start()
+
             # Cleanup after some time
             time.sleep(30)
             if session_id in server_progress:
