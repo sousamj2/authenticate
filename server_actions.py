@@ -45,6 +45,7 @@ def request_resume():
     
     # Store that we are waiting for a code in the session
     session["waiting_for_resume_code"] = True
+    session["new_resume_request"] = True
     session["resume_email"] = user_email
     
     flash("A confirmation code has been sent to your email.")
@@ -55,6 +56,12 @@ def verify_code():
     """
     Verifies the 10-char code and triggers the background resume process.
     """
+    if request.args.get("action") == "cancel":
+        session.pop("waiting_for_resume_code", None)
+        session.pop("new_resume_request", None)
+        session.pop("resume_email", None)
+        return redirect(url_for("profile.profile"))
+
     code = request.form.get("code", "").strip()
     print(f"DEBUG RESUME: Verifying code: {code}", flush=True)
     email = confirm_short_token(code)
@@ -62,6 +69,8 @@ def verify_code():
     if not email:
         print(f"DEBUG RESUME: Code verification FAILED for code: {code}", flush=True)
         flash("Invalid or expired confirmation code.")
+        session.pop("waiting_for_resume_code", None)
+        session.pop("new_resume_request", None)
         return redirect(url_for("profile.profile"))
     
     print(f"DEBUG RESUME: Code verification SUCCESSFUL for email: {email}", flush=True)
