@@ -12,7 +12,7 @@ from pprint import pprint
 import bleach
 from simplewebapp.Funhelpers import mask_email
 from mysql.DBhelpers import *
-from typing import Any, Mapping, cast
+from mysql.DBhelpers import getUserIdFromEmail
 from werkzeug.security import generate_password_hash
 import re
 from markupsafe import Markup
@@ -42,8 +42,8 @@ def updateDB():
     else:
         username = get_clean("username").lower()
         if username != email and not re.match(r"^[A-Za-z0-9._-]+$", username):
-            errorMessage += "O username pode conter letras, números ou os símbolos '.' , '-' ou '_'\n"
-            errorMessage += "Em alternativa pode utilizar o email como username."
+            errorMessage += "The username can contain letters, numbers or the symbols '.' , '-' or '_'\n"
+            errorMessage += "Alternatively you can use your email as username."
 
     h_password = None
     password = get_clean("password") or None
@@ -54,11 +54,9 @@ def updateDB():
     if not register_ip:
         register_ip = request.remote_addr
 
-    # Validation
-    sameEmail = getDataFromEmail(email)
-    if sameEmail:
-        sameEmail_map = cast(Mapping[str, Any], sameEmail)
-        errorMessage += f"Este email ({sameEmail_map.get('email','')}) já tem uma conta aqui criada em {sameEmail_map.get('createdatts','')}.\n"
+    # Validation: check if email already has an account
+    if getUserIdFromEmail(email):
+        errorMessage += f"This email ({email}) already has an account.\n"
 
     if len(errorMessage) > 0:
         if not session.get("metadata"):
@@ -68,7 +66,8 @@ def updateDB():
         return redirect(url_for("signup.signup", email=email))
 
     # TIER 1: Only these three functions
-    successUser = insertNewUser(first_name, last_name, email, h_password, username)
+    ign = get_clean("ign")
+    successUser = insertNewUser(first_name, last_name, email, h_password, username, ign)
     successIP = insertNewIP(email, register_ip)
     successConn = insertNewConnectionData(email, register_ip)
 
@@ -80,6 +79,7 @@ def updateDB():
             "email": email,
             "first_name": first_name,
             "last_name": last_name,
+            "ign": ign,
             "tier": 1,  # New user starts at tier 1
         }
         session.modified = True

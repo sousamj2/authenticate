@@ -5,6 +5,7 @@ from .signup import bp_signup
 from .logout import bp_logout
 from .signin_redirect import bp_signin_redirect
 from .updateDB import bp_updateDB
+from .server_actions import bp_server_actions
 
 __all__ = [
     "bp_check_user",
@@ -13,5 +14,6 @@ __all__ = [
     "bp_signup",
     "bp_logout",
     "bp_signin_redirect",
-    "bp_updateDB"
+    "bp_updateDB",
+    "bp_server_actions"
 ]

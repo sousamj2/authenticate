@@ -33,9 +33,10 @@ def signin():
         "index.html",
         admin_email=current_app.config["ADMIN_EMAIL"],
         user=user,
-        page_title="Explicações em Lisboa",
-        title="Explicações em Lisboa",
-        main_content=Markup(main_content_html),
+        page_title="Mostly Jovial Crafters",
+        title="Mostly Jovial Crafters",
+        content_template='content/signin.html',
+        logo_url=url_for('static', filename='images/google_logo.svg')
     )
 
 

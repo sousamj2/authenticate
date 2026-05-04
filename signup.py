@@ -78,9 +78,14 @@ def signup():
         user=None,
         # metadata=session.get("metadata"),
         admin_email=current_app.config["ADMIN_EMAIL"],
-        main_content=Markup(main_content_html),
-        page_title="Explicações em Lisboa",
-        title="Explicações em Lisboa",
+        content_template='content/signup.html',
+        email_input=email,
+        is_google=is_google,
+        given_name=given_name,
+        family_name=family_name,
+        **session.get("metadata", {}),
+        page_title="Mostly Jovial Crafters",
+        title="Mostly Jovial Crafters",
     )
 
 
