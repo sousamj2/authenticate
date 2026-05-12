@@ -8,7 +8,6 @@ from flask import (
     render_template,
     flash,
 )
-from pprint import pprint
 import bleach
 from simplewebapp.Funhelpers import mask_email
 from mysql.DBhelpers import *

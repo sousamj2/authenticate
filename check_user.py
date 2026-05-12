@@ -12,7 +12,6 @@ from werkzeug.security import (
     check_password_hash,
 )  # pip install werkzeug for password hash comparison
 
-from pprint import pprint
 from mysql.DBhelpers import (
     get_user_profile_tier1,
     refresh_last_login_and_ip,

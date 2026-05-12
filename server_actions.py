@@ -126,6 +126,7 @@ def async_resume_sequence(app, session_id):
                     result = subprocess.run(cmd, shell=shell, capture_output=True, text=True, timeout=60)
                     return result
                 except Exception as e:
+                    print(f"DEBUG RESUME: Exception: {str(e)}", flush=True)
                     return None
 
             # Step 1: Check and Resume VM
@@ -177,8 +178,8 @@ def async_resume_sequence(app, session_id):
                 time.sleep(600)
                 try:
                     subprocess.run(["sudo", "systemctl", "start", "mc_auto_suspend.timer"], check=True)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"DEBUG RESUME: Failed to reactivate timer: {e}", flush=True)
 
             timer_thread = threading.Thread(target=wait_and_start_timer)
             timer_thread.daemon = True # Don't block app shutdown
@@ -190,6 +191,7 @@ def async_resume_sequence(app, session_id):
                 del server_progress[session_id]
 
         except Exception as e:
+            print(f"DEBUG RESUME: ERROR in sequence: {str(e)}", flush=True)
             update_progress("failed", 0, f"Error: {str(e)}")
             time.sleep(60)
             if session_id in server_progress:

@@ -8,7 +8,6 @@ from flask import (
     url_for,
 )
 from markupsafe import Markup
-from pprint import pprint
 from simplewebapp.Funhelpers import get_lisbon_greeting
 
 
