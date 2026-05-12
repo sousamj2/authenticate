@@ -18,6 +18,7 @@ def signin_redirect():
     """
     # Dynamically generate the redirect URI based on the current domain
     redirect_uri = url_for('oauth2callback.oauth2callback', _external=True)
+    print(f"[DEBUG] OAuth2 Redirect URI: {redirect_uri}", flush=True)
     
     # Create the Google OAuth authorization URL
     auth_url = (
