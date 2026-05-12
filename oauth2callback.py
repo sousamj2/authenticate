@@ -21,7 +21,6 @@ def oauth2callback():
     
     # Use the same dynamic redirect URI for the exchange
     redirect_uri = url_for('oauth2callback.oauth2callback', _external=True)
-    print(f"[DEBUG] OAuth2 Callback URI: {redirect_uri}", flush=True)
 
     # Exchange code for tokens
     data = {
@@ -44,8 +43,4 @@ def oauth2callback():
     )
     session['userinfo'] = userinfo_response.json()
     userinfo = userinfo_response.json()
-    # pprint(userinfo)  # For debugging purposes
-    # print()
-    # pprint(tokens)  # For debugging purposes
-    print( 'Authentication successful, tokens acquired!')
     return redirect(url_for('check_user.check_user'))
