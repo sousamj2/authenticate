@@ -22,6 +22,7 @@ bp_updateDB = Blueprint("updateDB", __name__)
 
 @bp_updateDB.route("/updateDB", methods=["GET", "POST"])
 def updateDB():
+    print("[DEBUG] updateDB function entered!", flush=True)
     """
     Handles the final step of Tier 1 user registration, creating the user in the database.
     """
