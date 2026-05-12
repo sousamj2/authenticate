@@ -22,7 +22,6 @@ bp_updateDB = Blueprint("updateDB", __name__)
 
 @bp_updateDB.route("/updateDB", methods=["GET", "POST"])
 def updateDB():
-    print("[DEBUG] updateDB function entered!", flush=True)
     """
     Handles the final step of Tier 1 user registration, creating the user in the database.
     """
@@ -68,13 +67,10 @@ def updateDB():
 
     # TIER 1: Only these three functions
     ign = get_clean("ign")
-    print(f"[DEBUG] Registration attempt: Email={email}, Username={username}, IGN={ign}", flush=True)
-    
     successUser = insertNewUser(first_name, last_name, email, h_password, username, ign)
     successIP = insertNewIP(email, register_ip)
     successConn = insertNewConnectionData(email, register_ip)
 
-    print(f"[DEBUG] DB Responses: User={successUser}, IP={successIP}, Conn={successConn}", flush=True)
     is_error = any("Error" in str(s) for s in [successUser, successIP, successConn])
 
     if not is_error:
