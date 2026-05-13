@@ -1,4 +1,4 @@
-from flask import Blueprint, redirect,current_app
+from flask import Blueprint, redirect, current_app, url_for
 
 bp_signin_redirect = Blueprint('signin_redirect', __name__, url_prefix='/signin_redirect')
 # bp_signin_redirect314 = Blueprint('signin_redirect314', __name__, url_prefix='/signin_redirect314')
@@ -16,15 +16,18 @@ def signin_redirect():
     to allow the application to receive a refresh token. The user is then immediately
     redirected to this URL to begin authentication with Google.
     """
+    # Dynamically generate the redirect URI based on the current domain
+    redirect_uri = url_for('oauth2callback.oauth2callback', _external=True)
+    
     # Create the Google OAuth authorization URL
     auth_url = (
         f'{current_app.config["AUTHORIZATION_URL"]}?response_type=code'
         f'&client_id={current_app.config["CLIENT_ID"]}'
-        f'&redirect_uri={current_app.config["REDIRECT_URI"]}'
+        f'&redirect_uri={redirect_uri}'
         f'&scope={current_app.config["SCOPE"]}'
-        f'&access_type=offline'
-        f'&prompt=consent'
-        f'&state=secure_random_state'
+        f"&access_type=offline"
+        f"&prompt=consent"
+        f"&state=secure_random_state"
     )
     # print(auth_url)
     return redirect(auth_url)

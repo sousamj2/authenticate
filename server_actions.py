@@ -63,17 +63,15 @@ def verify_code():
         return redirect(url_for("profile.profile"))
 
     code = request.form.get("code", "").strip()
-    print(f"DEBUG RESUME: Verifying code: {code}", flush=True)
     email = confirm_short_token(code)
     
     if not email:
-        print(f"DEBUG RESUME: Code verification FAILED for code: {code}", flush=True)
         flash("Invalid or expired confirmation code.")
         session.pop("waiting_for_resume_code", None)
         session.pop("new_resume_request", None)
         return redirect(url_for("profile.profile"))
     
-    print(f"DEBUG RESUME: Code verification SUCCESSFUL for email: {email}", flush=True)
+    # Code verification SUCCESSFUL
 
     # Check for daily restart time (3:00 - 3:05 AM GMT)
     now_gmt = datetime.now(pytz.timezone('GMT'))
@@ -84,7 +82,6 @@ def verify_code():
     # Start the resume process in a background thread
     session_id = session.get("session_id") or email
     session["session_id"] = session_id # Ensure it's persisted in session
-    print(f"DEBUG RESUME: Using session_id: {session_id} for progress tracking", flush=True)
     
     server_progress[session_id] = {"step": "starting_machine", "progress": 10, "message": "Starting machine..."}
     
@@ -116,7 +113,6 @@ def async_resume_sequence(app, session_id):
     """
     import time
     with app.app_context():
-        print(f"DEBUG RESUME: Starting sequence for session {session_id}", flush=True)
         try:
             instance_name = app.config.get("GCP_INSTANCE_NAME", "mcserver-mem8")
             zone = app.config.get("GCP_ZONE", "europe-west1-b")
@@ -124,17 +120,10 @@ def async_resume_sequence(app, session_id):
             
             def update_progress(step, progress, message):
                 server_progress[session_id] = {"step": step, "progress": progress, "message": message}
-                print(f"DEBUG RESUME [{session_id}]: {message}", flush=True)
 
             def run_cmd(cmd, shell=False):
-                cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
-                print(f"DEBUG RESUME: Running command: {cmd_str}", flush=True)
                 try:
                     result = subprocess.run(cmd, shell=shell, capture_output=True, text=True, timeout=60)
-                    if result.stdout:
-                        print(f"DEBUG RESUME: STDOUT: {result.stdout.strip()}", flush=True)
-                    if result.stderr:
-                        print(f"DEBUG RESUME: STDERR: {result.stderr.strip()}", flush=True)
                     return result
                 except Exception as e:
                     print(f"DEBUG RESUME: Exception: {str(e)}", flush=True)
@@ -145,7 +134,6 @@ def async_resume_sequence(app, session_id):
             status_cmd = ["gcloud", "compute", "instances", "describe", instance_name, "--zone", zone, "--project", project_id, "--format=value(status)"]
             res = run_cmd(status_cmd)
             status = res.stdout.strip() if res else "UNKNOWN"
-            print(f"DEBUG RESUME: Current VM Status: {status}", flush=True)
 
             if status == "SUSPENDED":
                 update_progress("starting_machine", 30, "Resuming VM instance...")
@@ -187,11 +175,9 @@ def async_resume_sequence(app, session_id):
             # Step 4: Reactivate auto-suspend monitor after 10 minutes
             # We start a separate thread for the 10-minute wait so this one can finish
             def wait_and_start_timer():
-                print(f"DEBUG RESUME: Waiting 10 minutes to reactivate auto-suspend timer...", flush=True)
                 time.sleep(600)
                 try:
                     subprocess.run(["sudo", "systemctl", "start", "mc_auto_suspend.timer"], check=True)
-                    print(f"DEBUG RESUME: Auto-suspend timer reactivated successfully.", flush=True)
                 except Exception as e:
                     print(f"DEBUG RESUME: Failed to reactivate timer: {e}", flush=True)
 

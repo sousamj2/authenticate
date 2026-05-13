@@ -18,12 +18,16 @@ def oauth2callback():
     complete the login or registration process.
     """
     code = request.args.get('code')
+    
+    # Use the same dynamic redirect URI for the exchange
+    redirect_uri = url_for('oauth2callback.oauth2callback', _external=True)
+
     # Exchange code for tokens
     data = {
         'code': code,
         'client_id': current_app.config["CLIENT_ID"],
         'client_secret': current_app.config["CLIENT_SECRET"],
-        'redirect_uri': current_app.config["REDIRECT_URI"],
+        'redirect_uri': redirect_uri,
         'grant_type': 'authorization_code'
     }
     response = requests.post(current_app.config["TOKEN_URL"], data=data)
@@ -39,8 +43,4 @@ def oauth2callback():
     )
     session['userinfo'] = userinfo_response.json()
     userinfo = userinfo_response.json()
-    # pprint(userinfo)  # For debugging purposes
-    # print()
-    # pprint(tokens)  # For debugging purposes
-    print( 'Authentication successful, tokens acquired!')
     return redirect(url_for('check_user.check_user'))
