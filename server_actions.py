@@ -161,11 +161,11 @@ def async_resume_sequence(app, session_id):
             # Step 2: Start Minecraft
             update_progress("starting_minecraft", 60, "Waiting for SSH and Minecraft service...")
             # We'll try to start the service via SSH
-            ssh_base = f"gcloud compute ssh {instance_name} --zone {zone} --project {project_id} --quiet --"
+            ssh_base = "ssh -6 -o StrictHostKeyChecking=no goals_locust8006_eagereverest_co@2600:1900:4010:58a::"
             
             # Try to start the service
             update_progress("starting_minecraft", 75, "Starting Minecraft service...")
-            run_cmd(f"{ssh_base} sudo systemctl start mcpserver.service", shell=True)
+            run_cmd(f'{ssh_base} "sudo systemctl start mcpserver.service"', shell=True)
             
             # Step 3: Server is ready
             update_progress("ready", 90, "Server started! Waiting for plugins to load (60s)...")
