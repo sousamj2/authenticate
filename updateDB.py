@@ -116,8 +116,8 @@ def updateDB():
     ign = get_clean("ign")
     if ign:
         existing = submit_query(
-            "SELECT email FROM users WHERE ign = %s AND account_validated = TRUE AND g_token != -1 LIMIT 1;",
-            (ign,)
+            "SELECT email FROM users WHERE ign = %s AND account_validated = TRUE AND email NOT LIKE %s LIMIT 1;",
+            (ign, '%@placeholder.local')
         )
         if existing and not isinstance(existing, str):
             errorMessage += (
@@ -152,7 +152,7 @@ def updateDB():
     # Check if a placeholder account exists for this IGN
     placeholder = None
     if ign:
-        placeholder = submit_query("SELECT email FROM users WHERE ign = %s AND g_token = -1 LIMIT 1;", (ign,))
+        placeholder = submit_query("SELECT email FROM users WHERE ign = %s AND email LIKE %s LIMIT 1;", (ign, '%@placeholder.local'))
         
     if placeholder and not isinstance(placeholder, str):
         # Convert placeholder to real user
@@ -160,8 +160,8 @@ def updateDB():
         username_val = username if username is not None else email
         
         submit_query(
-            "UPDATE users SET first_name=%s, last_name=%s, email=%s, h_password=%s, username=%s, g_token=%s, rank_validated=TRUE, account_validated=TRUE WHERE ign=%s AND g_token=-1;",
-            (first_name, last_name, email, h_password, username_val, g_token_val, ign)
+            "UPDATE users SET first_name=%s, last_name=%s, email=%s, h_password=%s, username=%s, g_token=%s, rank_validated=TRUE, account_validated=TRUE WHERE ign=%s AND email LIKE %s;",
+            (first_name, last_name, email, h_password, username_val, g_token_val, ign, '%@placeholder.local')
         )
         successUser = "Success"
         account_validated = True
