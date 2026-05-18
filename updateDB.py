@@ -112,11 +112,11 @@ def updateDB():
             print(f"DEBUG: Reset registration token for admin email: {email}", flush=True)
         errorMessage += "Registration not allowed for this email.\n"
 
-    # Validation: check if IGN is already taken by a validated account
+    # Validation: check if IGN is already taken by a validated account (ignoring placeholders)
     ign = get_clean("ign")
     if ign:
         existing = submit_query(
-            "SELECT email FROM users WHERE ign = %s AND account_validated = TRUE LIMIT 1;",
+            "SELECT email FROM users WHERE ign = %s AND account_validated = TRUE AND g_token != -1 LIMIT 1;",
             (ign,)
         )
         if existing and not isinstance(existing, str):
@@ -149,10 +149,29 @@ def updateDB():
             print(f"DEBUG: IGN '{ign}' GCP SSH check result: {account_validated}", flush=True)
 
     # TIER 1: Insert user with rank_validated=True (registered via webapp)
-    successUser = insertNewUser(
-        first_name, last_name, email, h_password, username, ign,
-        rank_validated=True, account_validated=account_validated
-    )
+    # Check if a placeholder account exists for this IGN
+    placeholder = None
+    if ign:
+        placeholder = submit_query("SELECT email FROM users WHERE ign = %s AND g_token = -1 LIMIT 1;", (ign,))
+        
+    if placeholder and not isinstance(placeholder, str):
+        # Convert placeholder to real user
+        g_token_val = 1 if username is None else 0
+        username_val = username if username is not None else email
+        
+        submit_query(
+            "UPDATE users SET first_name=%s, last_name=%s, email=%s, h_password=%s, username=%s, g_token=%s, rank_validated=TRUE, account_validated=TRUE WHERE ign=%s AND g_token=-1;",
+            (first_name, last_name, email, h_password, username_val, g_token_val, ign)
+        )
+        successUser = "Success"
+        account_validated = True
+        print(f"DEBUG: Converted placeholder to real account for IGN {ign}")
+    else:
+        successUser = insertNewUser(
+            first_name, last_name, email, h_password, username, ign,
+            rank_validated=True, account_validated=account_validated
+        )
+
     successIP = insertNewIP(email, register_ip)
     successConn = insertNewConnectionData(email, register_ip)
 
