@@ -56,15 +56,14 @@ def signup():
     if len(email) == 0:
         return redirect(url_for("signin.signin"))
 
-    # print(email)
-    # error_message = session.get("metadata").get("error_message",'')
-    # print(session.get("metadata"))
+    error_message = session.get("metadata", {}).pop("error_message", None)
+    session.modified = True
 
     # First render the content template with profile variables
     main_content_html = render_template(
         "content/signup.html",
         email_input=email,
-        # error_message=error_message,
+        error_message=error_message,
         is_google=is_google,
         given_name=given_name,
         family_name=family_name,
@@ -82,6 +81,7 @@ def signup():
         is_google=is_google,
         given_name=given_name,
         family_name=family_name,
+        error_message=error_message,
         **session.get("metadata", {}),
         page_title="Mostly Jovial Crafters",
         title="Mostly Jovial Crafters",
