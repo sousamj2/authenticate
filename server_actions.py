@@ -4,6 +4,7 @@ import pytz
 from flask import Blueprint, request, session, redirect, url_for, flash, current_app, render_template
 from mailinteraction.registration_token import generate_token, confirm_token
 from mailinteraction.send_email import send_email
+import time as _time
 from markupsafe import Markup
 
 bp_server_actions = Blueprint("server_actions", __name__, url_prefix="/server")
@@ -41,7 +42,9 @@ def request_resume():
     <p>If you did not request this action, please ignore this email.</p>
     """
 
+    _t0 = _time.monotonic()
     send_email(subject, user_email, html_message)
+    print(f"⏱️  RESUME [send_email]: {_time.monotonic()-_t0:.2f}s", flush=True)
     
     # Store that we are waiting for a code in the session
     session["waiting_for_resume_code"] = True
